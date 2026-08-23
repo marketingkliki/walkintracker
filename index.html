@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Walk-In Tracker</title>
+<style>
+  :root{
+    --bg:#0f1115;
+    --panel:#171a21;
+    --panel2:#1e222b;
+    --line:#2a2f3a;
+    --text:#f2f3f5;
+    --sub:#8b93a3;
+    --accent:#ff8a3d;
+    --accent2:#ffb572;
+    --phone:#4d9dff;
+    --repair:#ffcc4d;
+    --cc:#5be08a;
+    --others:#c98bff;
+    --danger:#ff5f5f;
+    --radius:16px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    padding-bottom:100px;
+    min-height:100vh;
+  }
+  header{
+    padding:20px 18px 14px;
+    position:sticky; top:0; z-index:10;
+    background:linear-gradient(180deg, var(--bg) 70%, rgba(15,17,21,0));
+  }
+  header h1{
+    margin:0; font-size:20px; font-weight:800; letter-spacing:-0.02em;
+  }
+  header .tag{
+    color:var(--sub); font-size:13px; margin-top:2px;
+  }
+  #outletBar{
+    display:flex; gap:8px; overflow-x:auto; padding:14px 18px 4px;
+    scrollbar-width:none;
+  }
+  #outletBar::-webkit-scrollbar{display:none;}
+  .outlet-chip{
+    flex:0 0 auto;
+    padding:10px 16px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:999px;
+    color:var(--sub);
+    font-size:14px; font-weight:600;
+    white-space:nowrap;
+    cursor:pointer;
+  }
+  .outlet-chip.active{
+    background:var(--accent);
+    border-color:var(--accent);
+    color:#1a0e00;
+  }
+  main{padding:6px 18px 0;}
+  #emptyState{
+    margin-top:60px; text-align:center; color:var(--sub); font-size:15px;
+  }
+  #trackerArea{display:none;}
+  #sessionInfo{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:16px 4px 8px;
+  }
+  #sessionInfo .lbl{color:var(--sub); font-size:13px;}
+  #sessionInfo .val{font-size:28px; font-weight:800;}
+  #catGrid{
+    display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:6px;
+  }
+  .cat-btn{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:18px 14px;
+    text-align:left;
+    cursor:pointer;
+    position:relative;
+    overflow:hidden;
+    transition:transform .08s ease;
+  }
+  .cat-btn:active{transform:scale(0.96);}
+  .cat-btn .bar{
+    position:absolute; left:0; top:0; bottom:0; width:4px;
+  }
+  .cat-btn .emo{font-size:22px;}
+  .cat-btn .name{font-size:13px; color:var(--sub); margin-top:8px;}
+  .cat-btn .count{font-size:30px; font-weight:800; margin-top:2px;}
+  .cat-phone .bar{background:var(--phone);}
+  .cat-repair .bar{background:var(--repair);}
+  .cat-cc .bar{background:var(--cc);}
+  .cat-others .bar{background:var(--others);}
+  #summaryBox{
+    margin-top:18px; background:var(--panel); border:1px solid var(--line);
+    border-radius:var(--radius); padding:16px;
+  }
+  #summaryBox .row{display:flex; justify-content:space-between; padding:6px 0; font-size:14px; color:var(--sub);}
+  #summaryBox .row b{color:var(--text); font-weight:700;}
+  #summaryBox .totalRow{border-top:1px solid var(--line); margin-top:6px; padding-top:12px; font-size:16px;}
+  #summaryBox .totalRow b{font-size:20px; color:var(--accent2);}
+  #actionRow{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:16px;}
+  #actionRow2{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-top:10px;}
+  .btn{
+    border:1px solid var(--line); background:var(--panel2); color:var(--text);
+    border-radius:12px; padding:13px 10px; font-size:13px; font-weight:700;
+    cursor:pointer; text-align:center;
+  }
+  .btn.primary{background:var(--accent); border-color:var(--accent); color:#1a0e00;}
+  .btn.ghost{color:var(--sub);}
+  .btn.danger{color:var(--danger); border-color:#3a2226;}
+  #toast{
+    position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px);
+    background:var(--panel2); border:1px solid var(--line); padding:12px 18px;
+    border-radius:12px; font-size:14px; opacity:0; pointer-events:none;
+    transition:all .25s ease;
+    z-index:100;
+  }
+  #toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,0.6);
+    display:none; align-items:flex-end; justify-content:center; z-index:50;
+  }
+  .modal-overlay.show{display:flex;}
+  .modal{
+    background:var(--panel); width:100%; max-width:480px;
+    border-radius:20px 20px 0 0; padding:20px 20px 28px;
+    animation:slideUp .2s ease;
+  }
+  @keyframes slideUp{from{transform:translateY(30px); opacity:0;} to{transform:translateY(0); opacity:1;}}
+  .modal h3{margin:0 0 14px; font-size:17px;}
+  .modal label{display:block; font-size:12px; color:var(--sub); margin:12px 0 6px;}
+  .modal select, .modal input{
+    width:100%; padding:12px; border-radius:10px; border:1px solid var(--line);
+    background:var(--panel2); color:var(--text); font-size:15px;
+  }
+  .modal-actions{display:flex; gap:10px; margin-top:20px;}
+  .modal-actions .btn{flex:1;}
+  #loadingDot{
+    display:inline-block; width:6px; height:6px; border-radius:50%;
+    background:var(--sub); margin-left:6px; animation:pulse 1s infinite;
+  }
+  @keyframes pulse{0%,100%{opacity:0.3;} 50%{opacity:1;}}
+  .hidden{display:none !important;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Walk-In Tracker</h1>
+  <div class="tag" id="dateTag"></div>
+</header>
+
+<div id="outletBar"></div>
+
+<main>
+  <div id="emptyState">Pilih outlet dahulu untuk mula track</div>
+
+  <div id="trackerArea">
+    <div id="sessionInfo">
+      <div>
+        <div class="lbl">SESI AKTIF <span id="loadingDot" class="hidden"></span></div>
+        <div class="val" id="sessionTotal">0</div>
+      </div>
+      <div class="btn ghost" onclick="openReset()" style="padding:8px 14px; font-size:12px;">🔄 Reset</div>
+    </div>
+
+    <div id="catGrid"></div>
+
+    <div id="summaryBox">
+      <div id="summaryRows"></div>
+      <div class="row totalRow"><span>JUMLAH PELANGGAN</span><b id="summaryTotal">0</b></div>
+    </div>
+
+    <div id="actionRow">
+      <div class="btn" onclick="copyReport()">📋 Copy Laporan</div>
+      <div class="btn" onclick="openTelegram()">✈️ Telegram</div>
+    </div>
+    <div id="actionRow2">
+      <div class="btn ghost" onclick="openBackdate()">📅 Backdate</div>
+      <div class="btn ghost" onclick="openSubtract()">➖ Tolak</div>
+      <div class="btn ghost" style="opacity:0.4; pointer-events:none;">&nbsp;</div>
+    </div>
+  </div>
+</main>
+
+<div id="toast"></div>
+
+<!-- Backdate Modal -->
+<div class="modal-overlay" id="backdateModal">
+  <div class="modal">
+    <h3>Backdate Entry</h3>
+    <div class="tag" style="color:var(--sub); font-size:13px; margin-bottom:4px;">Tambah rekod untuk tarikh lain</div>
+    <label>KATEGORI</label>
+    <select id="bdCategory"></select>
+    <label>TARIKH</label>
+    <input type="date" id="bdDate">
+    <label>JUMLAH</label>
+    <input type="number" id="bdAmount" min="1" value="1">
+    <div class="modal-actions">
+      <div class="btn ghost" onclick="closeModal('backdateModal')">Batal</div>
+      <div class="btn primary" onclick="submitBackdate()">Simpan</div>
+    </div>
+  </div>
+</div>
+
+<!-- Subtract Modal -->
+<div class="modal-overlay" id="subtractModal">
+  <div class="modal">
+    <h3>Tolak Kiraan</h3>
+    <div class="tag" style="color:var(--sub); font-size:13px; margin-bottom:4px;">Kurangkan kiraan untuk kategori tertentu (hari ini)</div>
+    <label>KATEGORI</label>
+    <select id="subCategory"></select>
+    <label>JUMLAH TOLAK</label>
+    <input type="number" id="subAmount" min="1" value="1">
+    <div class="modal-actions">
+      <div class="btn ghost" onclick="closeModal('subtractModal')">Batal</div>
+      <div class="btn danger" onclick="submitSubtract()" style="background:#2a1416; border-color:#3a2226;">Tolak</div>
+    </div>
+  </div>
+</div>
+
+<!-- Reset Modal -->
+<div class="modal-overlay" id="resetModal">
+  <div class="modal">
+    <h3>Reset Data</h3>
+    <div class="tag" style="color:var(--sub); font-size:13px;">Yakin nak reset semua kiraan hari ini untuk outlet ini?</div>
+    <div class="modal-actions">
+      <div class="btn ghost" onclick="closeModal('resetModal')">Batal</div>
+      <div class="btn danger" onclick="submitReset()" style="background:#2a1416; border-color:#3a2226;">Ya, Reset</div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============ CONFIG ============ */
+// TUKAR ni dengan URL Apps Script Web App kau selepas deploy (lihat SETUP.md)
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzbw4T2cEh4eAw6OTNJQLvgIuIh4apMHqURpPbCtz7wHaphHjXJpAMrVrzo-wfMK0VcEw/exec";
+
+const OUTLETS = [
+  { key:"Lunas Kulim",    emoji:"🌾", cats:["Phone","Repair","CC","Others"] },
+  { key:"Alor Setar",     emoji:"🌙", cats:["Phone","Repair","CC","Others"] },
+  { key:"Sungai Petani",  emoji:"🌊", cats:["Phone","Repair","CC","Others"] },
+  { key:"Pendang",        emoji:"🌿", cats:["Phone","CC","Others"] },
+  { key:"Kelang Lama",    emoji:"🏙️", cats:["Phone","Repair","CC","Others"] },
+];
+
+const CAT_META = {
+  Phone:  { emoji:"📱", cls:"cat-phone" },
+  Repair: { emoji:"🔧", cls:"cat-repair" },
+  CC:     { emoji:"🛒", cls:"cat-cc" },
+  Others: { emoji:"📋", cls:"cat-others" },
+};
+
+/* ============ STATE ============ */
+let currentOutlet = null;
+let currentData = { Phone:0, Repair:0, CC:0, Others:0, Total:0 };
+let jsonpCounter = 0;
+
+function todayStr(){
+  const d = new Date();
+  const off = d.getTimezoneOffset();
+  const local = new Date(d.getTime() - off*60000);
+  return local.toISOString().slice(0,10);
+}
+function prettyDate(str){
+  const d = new Date(str+"T00:00:00");
+  const bulan = ["Januari","Februari","Mac","April","Mei","Jun","Julai","Ogos","September","Oktober","November","Disember"];
+  return d.getDate()+" "+bulan[d.getMonth()]+" "+d.getFullYear();
+}
+document.getElementById("dateTag").textContent = prettyDate(todayStr());
+
+/* ============ JSONP HELPER ============ */
+function jsonp(params){
+  return new Promise((resolve, reject)=>{
+    if(!SCRIPT_URL || SCRIPT_URL.indexOf("PASTE_") === 0){
+      reject(new Error("SCRIPT_URL belum diset. Lihat SETUP.md"));
+      return;
+    }
+    const cbName = "wt_cb_" + (jsonpCounter++);
+    const script = document.createElement("script");
+    window[cbName] = function(data){
+      resolve(data);
+      delete window[cbName];
+      script.remove();
+    };
+    const qs = Object.keys(params).map(k=>encodeURIComponent(k)+"="+encodeURIComponent(params[k])).join("&");
+    script.src = SCRIPT_URL + "?callback=" + cbName + "&" + qs;
+    script.onerror = ()=>{ reject(new Error("Gagal sambung ke server")); delete window[cbName]; script.remove(); };
+    document.body.appendChild(script);
+    setTimeout(()=>{ if(window[cbName]){ reject(new Error("Timeout")); delete window[cbName]; script.remove(); } }, 10000);
+  });
+}
+
+/* ============ RENDER OUTLET BAR ============ */
+const outletBar = document.getElementById("outletBar");
+OUTLETS.forEach(o=>{
+  const chip = document.createElement("div");
+  chip.className = "outlet-chip";
+  chip.textContent = o.emoji + " " + o.key;
+  chip.onclick = ()=>selectOutlet(o.key);
+  chip.dataset.key = o.key;
+  outletBar.appendChild(chip);
+});
+
+function getOutletDef(key){
+  return OUTLETS.find(o=>o.key===key);
+}
+
+async function selectOutlet(key){
+  currentOutlet = key;
+  document.querySelectorAll(".outlet-chip").forEach(c=>{
+    c.classList.toggle("active", c.dataset.key===key);
+  });
+  document.getElementById("emptyState").style.display = "none";
+  document.getElementById("trackerArea").style.display = "block";
+  renderCatGrid();
+  await refreshFromServer();
+}
+
+function renderCatGrid(){
+  const def = getOutletDef(currentOutlet);
+  const grid = document.getElementById("catGrid");
+  grid.innerHTML = "";
+  def.cats.forEach(cat=>{
+    const meta = CAT_META[cat];
+    const btn = document.createElement("div");
+    btn.className = "cat-btn " + meta.cls;
+    btn.innerHTML = `<div class="bar"></div><div class="emo">${meta.emoji}</div><div class="name">${cat}</div><div class="count" id="count-${cat}">0</div>`;
+    btn.onclick = ()=>addWalkIn(cat);
+    grid.appendChild(btn);
+  });
+}
+
+/* ============ DATA REFRESH / RENDER ============ */
+function setLoading(on){
+  document.getElementById("loadingDot").classList.toggle("hidden", !on);
+}
+
+async function refreshFromServer(){
+  setLoading(true);
+  try{
+    const data = await jsonp({ action:"get", outlet:currentOutlet, date:todayStr() });
+    currentData = data;
+  }catch(e){
+    showToast("⚠️ " + e.message);
+  }
+  setLoading(false);
+  renderCounts();
+}
+
+function renderCounts(){
+  const def = getOutletDef(currentOutlet);
+  def.cats.forEach(cat=>{
+    const el = document.getElementById("count-"+cat);
+    if(el) el.textContent = currentData[cat] || 0;
+  });
+  document.getElementById("sessionTotal").textContent = currentData.Total || 0;
+
+  const rows = document.getElementById("summaryRows");
+  rows.innerHTML = "";
+  def.cats.forEach(cat=>{
+    const meta = CAT_META[cat];
+    rows.innerHTML += `<div class="row"><span>${meta.emoji} ${cat}</span><b>${currentData[cat]||0}</b></div>`;
+  });
+  document.getElementById("summaryTotal").textContent = currentData.Total || 0;
+}
+
+/* ============ ACTIONS ============ */
+async function addWalkIn(cat){
+  // optimistic UI
+  currentData[cat] = (currentData[cat]||0) + 1;
+  currentData.Total = (currentData.Total||0) + 1;
+  renderCounts();
+  try{
+    const data = await jsonp({ action:"update", outlet:currentOutlet, date:todayStr(), category:cat, delta:1 });
+    currentData = data;
+    renderCounts();
+  }catch(e){
+    showToast("⚠️ Gagal simpan: " + e.message);
+  }
+}
+
+function openSubtract(){
+  const def = getOutletDef(currentOutlet);
+  const sel = document.getElementById("subCategory");
+  sel.innerHTML = def.cats.map(c=>`<option value="${c}">${CAT_META[c].emoji} ${c}</option>`).join("");
+  document.getElementById("subtractModal").classList.add("show");
+}
+async function submitSubtract(){
+  const cat = document.getElementById("subCategory").value;
+  const amt = parseInt(document.getElementById("subAmount").value,10) || 0;
+  if(amt<=0) return;
+  closeModal("subtractModal");
+  try{
+    const data = await jsonp({ action:"update", outlet:currentOutlet, date:todayStr(), category:cat, delta:-amt });
+    currentData = data;
+    renderCounts();
+    showToast("Ditolak "+amt+" dari "+cat);
+  }catch(e){
+    showToast("⚠️ " + e.message);
+  }
+}
+
+function openBackdate(){
+  const def = getOutletDef(currentOutlet);
+  const sel = document.getElementById("bdCategory");
+  sel.innerHTML = def.cats.map(c=>`<option value="${c}">${CAT_META[c].emoji} ${c}</option>`).join("");
+  document.getElementById("bdDate").value = todayStr();
+  document.getElementById("bdAmount").value = 1;
+  document.getElementById("backdateModal").classList.add("show");
+}
+async function submitBackdate(){
+  const cat = document.getElementById("bdCategory").value;
+  const date = document.getElementById("bdDate").value;
+  const amt = parseInt(document.getElementById("bdAmount").value,10) || 0;
+  if(amt<=0 || !date) return;
+  closeModal("backdateModal");
+  try{
+    await jsonp({ action:"update", outlet:currentOutlet, date:date, category:cat, delta:amt });
+    showToast("Rekod "+date+" disimpan");
+    if(date === todayStr()) refreshFromServer();
+  }catch(e){
+    showToast("⚠️ " + e.message);
+  }
+}
+
+function openReset(){ document.getElementById("resetModal").classList.add("show"); }
+async function submitReset(){
+  closeModal("resetModal");
+  try{
+    const data = await jsonp({ action:"reset", outlet:currentOutlet, date:todayStr() });
+    currentData = data;
+    renderCounts();
+    showToast("Direset");
+  }catch(e){
+    showToast("⚠️ " + e.message);
+  }
+}
+
+function closeModal(id){ document.getElementById(id).classList.remove("show"); }
+
+/* ============ REPORT ============ */
+function buildReportText(){
+  const def = getOutletDef(currentOutlet);
+  let lines = [];
+  lines.push("📊 LAPORAN WALK-IN : " + currentOutlet);
+  lines.push("📅 " + prettyDate(todayStr()));
+  lines.push("");
+  def.cats.forEach(cat=>{
+    lines.push(CAT_META[cat].emoji + " " + cat + ": " + (currentData[cat]||0));
+  });
+  lines.push("");
+  lines.push("🎯 JUMLAH: " + (currentData.Total||0));
+  return lines.join("\n");
+}
+
+function copyReport(){
+  const text = buildReportText();
+  navigator.clipboard.writeText(text).then(()=>{
+    showToast("Laporan disalin ✓ Tampal dalam Telegram");
+  }).catch(()=>{
+    // fallback
+    const ta = document.createElement("textarea");
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    document.execCommand("copy"); ta.remove();
+    showToast("Laporan disalin ✓");
+  });
+}
+
+function openTelegram(){
+  // Staff sudah jadi member group Telegram outlet masing-masing.
+  // Buka app Telegram supaya staff terus paste laporan yang telah disalin.
+  window.location.href = "https://t.me/";
+}
+
+/* ============ TOAST ============ */
+let toastTimer = null;
+function showToast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove("show"), 2600);
+}
+</script>
+</body>
+</html>
