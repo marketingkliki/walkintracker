@@ -294,10 +294,10 @@ const OUTLETS = [
 ];
 
 const CAT_META = {
-  Phone:  { emoji:"📱", cls:"cat-phone" },
-  Repair: { emoji:"🔧", cls:"cat-repair" },
-  CC:     { emoji:"🛒", cls:"cat-cc" },
-  Others: { emoji:"📋", cls:"cat-others" },
+  Phone:  { emoji:"📱", cls:"cat-phone", label:"Phone" },
+  Repair: { emoji:"🔧", cls:"cat-repair", label:"Repair" },
+  CC:     { emoji:"💰", cls:"cat-cc", label:"Cash Converter" },
+  Others: { emoji:"📋", cls:"cat-others", label:"Others" },
 };
 
 /* ============ STATE ============ */
@@ -313,8 +313,9 @@ function todayStr(){
 }
 function prettyDate(str){
   const d = new Date(str+"T00:00:00");
+  const hari = ["Ahad","Isnin","Selasa","Rabu","Khamis","Jumaat","Sabtu"];
   const bulan = ["Januari","Februari","Mac","April","Mei","Jun","Julai","Ogos","September","Oktober","November","Disember"];
-  return d.getDate()+" "+bulan[d.getMonth()]+" "+d.getFullYear();
+  return hari[d.getDay()]+", "+d.getDate()+" "+bulan[d.getMonth()]+" "+d.getFullYear();
 }
 document.getElementById("dateTag").textContent = prettyDate(todayStr());
 
@@ -385,7 +386,7 @@ function renderCatGrid(){
     const meta = CAT_META[cat];
     const btn = document.createElement("div");
     btn.className = "cat-btn " + meta.cls;
-    btn.innerHTML = `<div class="bar"></div><div class="emo">${meta.emoji}</div><div class="name">${cat}</div><div class="count" id="count-${cat}">0</div>`;
+    btn.innerHTML = `<div class="bar"></div><div class="emo">${meta.emoji}</div><div class="name">${meta.label}</div><div class="count" id="count-${cat}">0</div>`;
     btn.onclick = ()=>addWalkIn(cat);
     grid.appendChild(btn);
   });
@@ -410,7 +411,7 @@ function renderCounts(){
   rows.innerHTML = "";
   def.cats.forEach(cat=>{
     const meta = CAT_META[cat];
-    rows.innerHTML += `<div class="row"><span>${meta.emoji} ${cat}</span><b>${currentData[cat]||0}</b></div>`;
+    rows.innerHTML += `<div class="row"><span>${meta.emoji} ${meta.label}</span><b>${currentData[cat]||0}</b></div>`;
   });
   document.getElementById("summaryTotal").textContent = currentData.Total || 0;
 }
@@ -427,7 +428,7 @@ function addWalkIn(cat){
 function openSubtract(){
   const def = getOutletDef(currentOutlet);
   const sel = document.getElementById("subCategory");
-  sel.innerHTML = def.cats.map(c=>`<option value="${c}">${CAT_META[c].emoji} ${c}</option>`).join("");
+  sel.innerHTML = def.cats.map(c=>`<option value="${c}">${CAT_META[c].emoji} ${CAT_META[c].label}</option>`).join("");
   document.getElementById("subtractModal").classList.add("show");
 }
 function submitSubtract(){
@@ -446,7 +447,7 @@ function submitSubtract(){
 function openBackdate(){
   const def = getOutletDef(currentOutlet);
   const sel = document.getElementById("bdCategory");
-  sel.innerHTML = def.cats.map(c=>`<option value="${c}">${CAT_META[c].emoji} ${c}</option>`).join("");
+  sel.innerHTML = def.cats.map(c=>`<option value="${c}">${CAT_META[c].emoji} ${CAT_META[c].label}</option>`).join("");
   document.getElementById("bdDate").value = todayStr();
   document.getElementById("bdAmount").value = 1;
   document.getElementById("backdateModal").classList.add("show");
@@ -480,12 +481,10 @@ function buildReportText(){
   let lines = [];
   lines.push("📊 LAPORAN WALK-IN : " + currentOutlet);
   lines.push("📅 " + prettyDate(todayStr()));
-  lines.push("");
   def.cats.forEach(cat=>{
-    lines.push(CAT_META[cat].emoji + " " + cat + ": " + (currentData[cat]||0));
+    lines.push(CAT_META[cat].emoji + " " + CAT_META[cat].label + ": " + (currentData[cat]||0));
   });
-  lines.push("");
-  lines.push("🎯 JUMLAH: " + (currentData.Total||0));
+  lines.push("📈 JUMLAH: (" + (currentData.Total||0) + ") Walk-in");
   return lines.join("\n");
 }
 
